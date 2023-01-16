@@ -32,6 +32,7 @@ blueprints = [
     Blueprint('unblock_tasks', __name__, '/tasks/unblock/<id>/<customer_name>'),
     Blueprint('create_googleads', __name__, '/googleads/<customer_name>'),
     Blueprint('create_facebook', __name__, '/facebook/<customer_name>'),
+    Blueprint('create_linkedin', __name__, '/linkedin/<customer_name>'),
 ]
 
 for blueprint in blueprints:
@@ -168,6 +169,22 @@ def create_facebook(customer_name):
         collection.find_one_and_update({'date': data['date'], 'id': data['id']}, {'$set': {'cost': data['cost'], 'status': data['status']}}, upsert=True)
         # Return success message
         return jsonify({'status': 'success'})
+
+
+### LINKEDIN API ###
+# Create
+@app.route('/linkedin/<customer_name>', methods=['POST'])
+def create_linkedin(customer_name):
+    if request.method == 'POST':
+        # Get data from JSON response
+        data = request.get_json()
+        # Get customer database
+        collection = linkedin_db[customer_name]
+        # Insert data into database if doesn't exist, else update existing data
+        collection.find_one_and_update({'date': data['date'], 'id': data['id']}, {'$set': {'cost': data['cost'], 'status': data['status']}}, upsert=True)
+        # Return success message
+        return jsonify({'status': 'success'})
+
 
 
 if __name__ == '__main__':
