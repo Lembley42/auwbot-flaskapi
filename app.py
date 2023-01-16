@@ -27,7 +27,8 @@ linkedin_db = client['linkedin']
 # Register blueprint
 blueprints = [
     Blueprint('create_tasks', __name__, '/tasks/<customer_name>'),
-    Blueprint('readupdatedelete_tasks', __name__, '/tasks/<id>/<customer_name>'),
+    Blueprint('readupdatedelete_tasks', __name__, '/tasks/<id>/<customer_name>'), # Read, Update, Delete share same URL
+    Blueprint('readall_tasks', __name__, '/tasks/scheduled/<type>'),
     Blueprint('log_tasks', __name__, '/tasks/log/<id>/<customer_name>'),
     Blueprint('block_tasks', __name__, '/tasks/block/<id>/<customer_name>'),
     Blueprint('unblock_tasks', __name__, '/tasks/unblock/<id>/<customer_name>'),
@@ -72,6 +73,21 @@ def get_task(id, customer_name):
         # Convertwith custom JSONEncoder to JSON
         json_data = json.dumps(task, cls=JSONEncoder)
         # Return task
+        return json_data
+
+# Read all
+@app.route('/tasks/scheduled/<type>', methods=['GET'])
+def get_tasks_of_type(type):
+    if request.method == 'GET':
+        # Get every collection in database
+        collections = task_db.list_collection_names()
+        # Find every document where status is idle and where type is equal to type
+        tasks = []
+        for collection in collections:
+            tasks += list(task_db[collection].find({'status': 'idle', 'type': type}))
+        # Convertwith custom JSONEncoder to JSON
+        json_data = json.dumps(tasks, cls=JSONEncoder)
+        # Return tasks
         return json_data
 
 # Update
@@ -189,6 +205,6 @@ def create_linkedin(customer_name):
         return jsonify({'status': 'success'})
 
 
-
+ 
 if __name__ == '__main__':
     app.run(debug=True)
