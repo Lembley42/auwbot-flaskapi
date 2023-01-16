@@ -2,4 +2,5 @@ gevent
 gunicorn
 flask
 pymongo
-
+google-cloud-pubsub
+cryptography

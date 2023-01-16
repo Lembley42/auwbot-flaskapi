@@ -2,8 +2,11 @@
 from flask import Flask, request, jsonify, Blueprint
 import pymongo, json, os
 from bson.objectid import ObjectId
-from jsonencoder import JSONEncoder
 from datetime import datetime
+from google.cloud import pubsub_v1
+# Local Imports
+from jsonencoder import JSONEncoder
+from filedecryption import Decrypt_File
 
 # Create Flask app
 app = Flask(__name__)
@@ -13,7 +16,11 @@ MONGO_PATH = os.environ.get('MONGO_PATH')
 MONGO_USER = os.environ.get('MONGO_USER')
 MONGO_PASS = os.environ.get('MONGO_PASS')
 API_KEY = os.environ.get('API_KEY')
+GOOGLE_PROJECT_ID = os.environ.get('GOOGLE_PROJECT_ID')
 
+# Set Google credentials
+Decrypt_File('google-credentials.bin', 'google-credentials.json', os.environ.get('GOOGLE_CREDENTIALS_KEY'))
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'google-credentials.json'
 
 # Connect to MongoDB
 client = pymongo.MongoClient(f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_PATH}/?retryWrites=true&w=majority")
@@ -23,6 +30,8 @@ googleads_db = client['googleads']
 facebook_db = client['facebook']
 linkedin_db = client['linkedin']
 
+# Connect to PubSub
+cloud_publisher = pubsub_v1.PublisherClient()
 
 # Register blueprint
 blueprints = [
@@ -35,6 +44,7 @@ blueprints = [
     Blueprint('create_googleads', __name__, '/googleads/<customer_name>'),
     Blueprint('create_facebook', __name__, '/facebook/<customer_name>'),
     Blueprint('create_linkedin', __name__, '/linkedin/<customer_name>'),
+    Blueprint('send_pubsub_message', __name__, '/pubsub/<topic>')
 ]
 
 for blueprint in blueprints:
@@ -205,6 +215,23 @@ def create_linkedin(customer_name):
         return jsonify({'status': 'success'})
 
 
- 
+### GOOGLE PUBSUB ###
+# Send
+@app.route('/pubsub/<topic>', methods=['POST'])
+def send_pubsub_message(topic):
+    if request.method == 'POST':
+        # Get data from JSON response
+        data = request.get_json()
+        # Get Message
+        message = data['message']
+        # Get topic
+        topic_path = cloud_publisher.topic_path(GOOGLE_PROJECT_ID, topic)
+        # Send message
+        future = cloud_publisher.publish(topic_path, data=message.encode('utf-8'))
+        # Return success message
+        return jsonify({'status': 'success'})
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
