@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify, Blueprint
 import pymongo, json, os
 from bson.objectid import ObjectId
 from jsonencoder import JSONEncoder
+from datetime import datetime
 
 # Create Flask app
 app = Flask(__name__)
@@ -178,6 +179,8 @@ def create_linkedin(customer_name):
     if request.method == 'POST':
         # Get data from JSON response
         data = request.get_json()
+        # Change data['date'] to datetime object
+        data['date'] = datetime.strptime(data['date'], '%Y-%m-%d')
         # Get customer database
         collection = linkedin_db[customer_name]
         # Insert data into database if doesn't exist, else update existing data
