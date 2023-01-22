@@ -182,6 +182,10 @@ def get_date_range(id, customer_name):
             end_date = start_date + timedelta(days=daysToLoad)
             if end_date > today: end_date = today
         
+        # Convert to string with format #YYYY-MM-DD
+        start_date = start_date.strftime('%Y-%m-%d')
+        end_date = end_date.strftime('%Y-%m-%d')
+
         # Return date range
         return jsonify({'start_date': start_date, 'end_date': end_date})
 
