@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify, Blueprint
 import pymongo, json, os
 from bson.objectid import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 from google.cloud import pubsub_v1
 # Local Imports
 from jsonencoder import JSONEncoder
@@ -95,7 +95,7 @@ def get_tasks_of_type(type):
         tasks = []
         for collection in collections:
             tasks += list(task_db[collection].find({'status': 'idle', 'type': type}))
-        # Convertwith custom JSONEncoder to JSON
+        # Convert with custom JSONEncoder to JSON
         json_data = json.dumps(tasks, cls=JSONEncoder)
         # Return tasks
         return json_data
@@ -140,6 +140,52 @@ def log_task(id, customer_name):
         collection.update_one({'_id': ObjectId(id)}, {'$push': {'log': data}})
         # Return success message
         return jsonify({'status': 'success'}) 
+
+
+# Get Date Range
+@app.route('/tasks/daterange/<id>/<customer_name>', methods=['GET'])
+def get_date_range(id, customer_name):
+    if request.method == 'GET':
+        # Get customer database
+        collection = task_db[customer_name]
+        # Get task from document by ObjectId
+        task = collection.find_one({'_id': ObjectId(id)})
+        # Convert with custom JSONEncoder to JSON
+        task_document = json.dumps(task, cls=JSONEncoder)
+        # Determine date range
+        mode = task_document['mode']
+        daysToLoad = task_document['settings'][f'days_per_load']
+        daysToUpdate = task_document['settings'][f'days_per_update']
+        first_date = task_document['settings']['first_date']
+        last_date = task_document['settings']['last_date']
+
+        today = datetime.now()
+
+        # If last date is within update range, ensure mode is update
+        if mode == 'load' & (last_date + timedelta(days=daysToLoad)) < today:
+            mode = 'update'
+            collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
+        # If last date is not within update range, ensure mode is load
+        elif mode == 'update' & (last_date + timedelta(days=daysToUpdate)) > today: 
+            mode = 'load'
+            collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
+
+        # When Update, start date is today and end date is today - daysToUpdate, but no earlier than first_date
+        if mode == 'update':
+            start_date = today
+            end_date = start_date - timedelta(days=daysToUpdate)
+            if end_date < first_date: end_date = first_date
+        
+        # When Load, start date is last_date and end date is last_date + daysToLoad, but no later than today
+        elif mode == 'load':
+            start_date = last_date
+            end_date = start_date + timedelta(days=daysToLoad)
+            if end_date > today: end_date = today
+        
+        # Return date range
+        return jsonify({'start_date': start_date, 'end_date': end_date})
+
+
 
 # Block
 @app.route('/tasks/block/<id>/<customer_name>', methods=['PUT'])
