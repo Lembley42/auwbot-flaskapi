@@ -162,7 +162,7 @@ def get_date_range(id, customer_name):
         today = datetime.now()
 
         # If last date is within update range, ensure mode is update
-        if mode == 'load' and (last_date + timedelta(days=daysToLoad)) > today:
+        if mode == 'load' and (last_date + timedelta(days=daysToLoad)) >= today:
             mode = 'update'
             collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
         # If last date is not within update range, ensure mode is load
@@ -172,8 +172,8 @@ def get_date_range(id, customer_name):
 
         # When Update, start date is today and end date is today - daysToUpdate, but no earlier than first_date
         if mode == 'update':
-            start_date = today
-            end_date = start_date - timedelta(days=daysToUpdate)
+            end_date = today
+            start_date = end_date - timedelta(days=daysToUpdate)
             if end_date < first_date: end_date = first_date
         
         # When Load, start date is last_date and end date is last_date + daysToLoad, but no later than today
