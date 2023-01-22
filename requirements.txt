@@ -4,5 +4,5 @@ flask
 pymongo
 google-cloud-pubsub
 cryptography
-dateutil
+python-dateutil
 schedule

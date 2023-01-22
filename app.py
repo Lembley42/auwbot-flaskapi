@@ -165,7 +165,7 @@ def get_date_range(id, customer_name):
             mode = 'update'
             collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
         # If last date is not within update range, ensure mode is load
-        elif mode == 'update' and (last_date + timedelta(days=daysToUpdate)) > today: 
+        elif mode == 'update' and (last_date + timedelta(days=daysToLoad)) > today: 
             mode = 'load'
             collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
 
