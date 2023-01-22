@@ -2,6 +2,7 @@
 from flask import Flask, request, jsonify, Blueprint
 import pymongo, json, os
 from bson.objectid import ObjectId
+from crontab import CronTab
 from datetime import datetime, timedelta
 from google.cloud import pubsub_v1
 # Local Imports
@@ -40,6 +41,7 @@ blueprints = [
     Blueprint('readall_tasks', __name__, '/tasks/scheduled/<type>'),
     Blueprint('log_tasks', __name__, '/tasks/log/<id>/<customer_name>'),
     Blueprint('get_date_range', __name__, '/tasks/daterange/<id>/<customer_name>'),
+    Blueprint('reschedule_tasks', __name__, '/tasks/reschedule/<id>/<customer_name>'),
     Blueprint('block_tasks', __name__, '/tasks/block/<id>/<customer_name>'),
     Blueprint('unblock_tasks', __name__, '/tasks/unblock/<id>/<customer_name>'),
     Blueprint('create_googleads', __name__, '/googleads/<customer_name>'),
@@ -159,7 +161,6 @@ def get_date_range(id, customer_name):
         daysToUpdate = task_document['settings'][f'days_per_update']
         first_date = task_document['settings']['first_date']
         last_date = task_document['settings']['last_date']
-
         today = datetime.now()
 
         # If last date is within update range, ensure mode is update
@@ -186,6 +187,27 @@ def get_date_range(id, customer_name):
         # Return date range
         return jsonify({'start_date': start_date, 'end_date': end_date})
 
+
+# Reschedule
+@app.route('/tasks/reschedule/<id>/<customer_name>', methods=['PUT'])
+def reschedule_task(id, customer_name):
+    if request.method == 'PUT':
+        # Get customer database
+        collection = task_db[customer_name]
+        # Load task from database
+        task = collection.find_one({'_id': ObjectId(id)})
+        # Convert with custom JSONEncoder to JSON
+        task_document = json.dumps(task, cls=JSONEncoder)
+        # Get variables from task document
+        mode = task_document['mode']
+        next_run = task_document['schedule']['next_run']
+        cron = CronTab(tab=task_document['schedule'][f'cron_{mode}'])
+        # Increase next_run by cron schedule
+        next_run = cron.next(default_utc=True, start_time=next_run)
+        # Update task
+        collection.update_one({'_id': ObjectId(id)}, {'$set': {'schedule.next_run': next_run}})
+        # Return success message
+        return jsonify({'status': 'success'})
 
 
 # Block
