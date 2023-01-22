@@ -4,4 +4,5 @@ flask
 pymongo
 google-cloud-pubsub
 cryptography
-python-crontab
+dateutil
+schedule
