@@ -154,18 +154,18 @@ def get_date_range(id, customer_name):
         task = collection.find_one({'_id': ObjectId(id)})
         # Determine date range
         mode = task['mode']
-        daysToLoad = task['settings'][f'days_per_load']
-        daysToUpdate = task['settings'][f'days_per_update']
-        first_date = task['settings']['first_date']
-        last_date = task['settings']['last_date']
+        daysToLoad = task['settings']['days_per_load']
+        daysToUpdate = task['settings']['days_per_update']
+        first_date = datetime.strptime(task['settings']['first_date'], '%Y-%m-%d')
+        last_date = datetime.strptime(task['last_date'], '%Y-%m-%d')
         today = datetime.now()
 
         # If last date is within update range, ensure mode is update
-        if mode == 'load' and (last_date + timedelta(days=daysToLoad)) < today:
+        if mode == 'load' and (last_date + timedelta(days=daysToLoad)) > today:
             mode = 'update'
             collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
         # If last date is not within update range, ensure mode is load
-        elif mode == 'update' and (last_date + timedelta(days=daysToLoad)) > today: 
+        elif mode == 'update' and (last_date + timedelta(days=daysToLoad)) < today: 
             mode = 'load'
             collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
 
