@@ -153,14 +153,12 @@ def get_date_range(id, customer_name):
         collection = task_db[customer_name]
         # Get task from document by ObjectId
         task = collection.find_one({'_id': ObjectId(id)})
-        # Convert with custom JSONEncoder to JSON
-        task_document = json.dumps(task, cls=JSONEncoder)
         # Determine date range
-        mode = task_document['mode']
-        daysToLoad = task_document['settings'][f'days_per_load']
-        daysToUpdate = task_document['settings'][f'days_per_update']
-        first_date = task_document['settings']['first_date']
-        last_date = task_document['settings']['last_date']
+        mode = task['mode']
+        daysToLoad = task['settings'][f'days_per_load']
+        daysToUpdate = task['settings'][f'days_per_update']
+        first_date = task['settings']['first_date']
+        last_date = task['settings']['last_date']
         today = datetime.now()
 
         # If last date is within update range, ensure mode is update
@@ -196,12 +194,10 @@ def reschedule_task(id, customer_name):
         collection = task_db[customer_name]
         # Load task from database
         task = collection.find_one({'_id': ObjectId(id)})
-        # Convert with custom JSONEncoder to JSON
-        task_document = json.dumps(task, cls=JSONEncoder)
         # Get variables from task document
-        mode = task_document['mode']
-        next_run = task_document['schedule']['next_run']
-        cron = CronTab(tab=task_document['schedule'][f'cron_{mode}'])
+        mode = task['mode']
+        next_run = task['schedule']['next_run']
+        cron = CronTab(tab=task['schedule'][f'cron_{mode}'])
         # Increase next_run by cron schedule
         next_run = cron.next(default_utc=True, start_time=next_run)
         # Update task
