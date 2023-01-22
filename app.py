@@ -39,6 +39,7 @@ blueprints = [
     Blueprint('readupdatedelete_tasks', __name__, '/tasks/<id>/<customer_name>'), # Read, Update, Delete share same URL
     Blueprint('readall_tasks', __name__, '/tasks/scheduled/<type>'),
     Blueprint('log_tasks', __name__, '/tasks/log/<id>/<customer_name>'),
+    Blueprint('get_date_range', __name__, '/tasks/daterange/<id>/<customer_name>'),
     Blueprint('block_tasks', __name__, '/tasks/block/<id>/<customer_name>'),
     Blueprint('unblock_tasks', __name__, '/tasks/unblock/<id>/<customer_name>'),
     Blueprint('create_googleads', __name__, '/googleads/<customer_name>'),
