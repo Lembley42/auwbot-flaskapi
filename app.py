@@ -1,6 +1,6 @@
 ### IMPORTS ###
 from flask import Flask, request, jsonify, Blueprint
-import pymongo, json, os, schedule
+import pymongo, json, os, croniter
 from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 from google.cloud import pubsub_v1
@@ -202,7 +202,7 @@ def reschedule_task(id, customer_name):
         next_run = task['schedule']['next_run']
         cron_string = task['schedule'][f'cron_{mode}']
         # Increase next_run by cron schedule
-        next_run = schedule.next_run(cron_string, next_run)
+        next_run = croniter.croniter(cron_string, next_run).get_next(datetime)
         # Update task
         collection.update_one({'_id': ObjectId(id)}, {'$set': {'schedule.next_run': next_run}})
         # Return success message
