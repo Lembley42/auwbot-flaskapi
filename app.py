@@ -69,6 +69,8 @@ def create_task(customer_name):
         data = request.get_json()
         # Get customer database
         collection = task_db[customer_name]
+        # JSON data to dict
+        data = json.loads(data, cls=JSONEncoder)
         # Insert data into database
         collection.insert_one(data)
         # Return success message
