@@ -96,9 +96,10 @@ def get_tasks_of_type(type):
         # Get every collection in database
         collections = task_db.list_collection_names()
         # Find every document where status is idle and where type is equal to type
+        now = datetime.utcnow()
         tasks = []
         for collection in collections:
-            tasks += list(task_db[collection].find({'status': 'idle', 'type': type}))
+            tasks += list(task_db[collection].find({'status': 'idle', 'schedule.next_run': {'$gte': now}, 'type': type}))        
         # Convert with custom JSONEncoder to JSON
         json_data = json.dumps(tasks, cls=JSONEncoder)
         # Return tasks
