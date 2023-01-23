@@ -14,3 +14,4 @@ class JSONEncoder(json.JSONEncoder):
         elif isinstance(obj, datetime):
             return obj.strftime(DEFAULT_DATE_FORMAT)
         return json.JSONEncoder.default(self, obj)
+
