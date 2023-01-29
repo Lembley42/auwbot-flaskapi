@@ -174,7 +174,7 @@ def get_date_range(id, customer_name):
         daysToUpdate = task_settings['days_per_update']
         first_date = datetime.strptime(task_settings['first_date'], '%Y-%m-%d')
         last_date = datetime.strptime(task_settings['last_date'], '%Y-%m-%d')
-        today = datetime.now()
+        today = datetime.utcnow()
 
         # If last date is within update range, ensure mode is update
         if mode == 'load' and (last_date + timedelta(days=daysToLoad)) >= today:
