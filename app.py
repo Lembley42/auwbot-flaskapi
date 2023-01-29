@@ -38,6 +38,7 @@ blueprints = [
     Blueprint('create_tasks', __name__, '/tasks/<customer_name>'),
     Blueprint('readupdatedelete_tasks', __name__, '/tasks/<id>/<customer_name>'), # Read, Update, Delete share same URL
     Blueprint('readall_tasks', __name__, '/tasks/scheduled/<type>'),
+    Blueprint('query_tasks', __name__, '/tasks/query/<customer_name>'),
     Blueprint('log_tasks', __name__, '/tasks/log/<id>/<customer_name>'),
     Blueprint('get_date_range', __name__, '/tasks/daterange/<id>/<customer_name>'),
     Blueprint('reschedule_tasks', __name__, '/tasks/reschedule/<id>/<customer_name>'),
@@ -128,7 +129,20 @@ def delete_task(id, customer_name):
         return jsonify({'status': 'success'})
 
 
-
+# Query
+@app.route('/tasks/query/<customer_name>', methods=['POST'])
+def query_tasks(customer_name):
+    if request.method == 'POST':
+        # Get data from JSON response
+        data = request.get_json()
+        # Get customer database
+        collection = task_db[customer_name]
+        # Query tasks
+        tasks = list(collection.find(data))
+        # Convert with custom JSONEncoder to JSON
+        json_data = json.dumps(tasks, cls=JSONEncoder)
+        # Return tasks
+        return json_data
 
 ### Task Functions ###
 # Log
