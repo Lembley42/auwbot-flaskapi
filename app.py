@@ -69,8 +69,6 @@ def create_task(customer_name):
         data = request.get_json()
         # Get customer database
         collection = task_db[customer_name]
-        # JSON data to dict
-        data = json.loads(data)
         # Insert data into database
         collection.insert_one(data)
         # Return success message
@@ -84,7 +82,7 @@ def get_task(id, customer_name):
         collection = task_db[customer_name]
         # Get task from document by ObjectId
         task = collection.find_one({'_id': ObjectId(id)})
-        # Convertwith custom JSONEncoder to JSON
+        # Convert with custom JSONEncoder to JSON
         json_data = json.dumps(task, cls=JSONEncoder)
         # Return task
         return json_data
