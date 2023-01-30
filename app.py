@@ -215,7 +215,11 @@ def reschedule_task(id, customer_name):
         task = collection.find_one({'_id': ObjectId(id)})
         # Get variables from task document
         mode = task['mode']
-        next_run = datetime.strptime(task['schedule']['next_run'], '%Y-%m-%d %H:%M:%S') 
+        next_run = task['schedule']['next_run']
+        #TODO: Ensure that next_run is a datetime object on MongoDB
+        if isinstance(next_run, str): next_run = datetime.strptime(task['schedule']['next_run'], '%Y-%m-%d %H:%M:%S') 
+        elif isinstance(next_run, (int, float)): next_run = datetime.fromtimestamp(task['schedule']['next_run'])
+        elif isinstance(next_run, datetime): next_run = task['schedule']['next_run']
         cron_string = task['schedule'][f'cron_{mode}']
         # Increase next_run by cron schedule
         next_run = croniter.croniter(cron_string, next_run).get_next(datetime)
