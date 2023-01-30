@@ -177,11 +177,11 @@ def get_date_range(id, customer_name):
         today = datetime.utcnow()
 
         # If last date is within update range, ensure mode is update
-        if mode == 'load' and (last_date + timedelta(days=daysToLoad)) >= today:
+        if mode == 'load' and (last_date + timedelta(days=daysToUpdate)) >= today:
             mode = 'update'
             collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
         # If last date is not within update range, ensure mode is load
-        elif mode == 'update' and (last_date + timedelta(days=daysToLoad)) < today: 
+        elif mode == 'update' and (last_date + timedelta(days=daysToUpdate)) < today: 
             mode = 'load'
             collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
 
@@ -219,6 +219,11 @@ def reschedule_task(id, customer_name):
         cron_string = task['schedule'][f'cron_{mode}']
         # Increase next_run by cron schedule
         next_run = croniter.croniter(cron_string, next_run).get_next(datetime)
+        # If next run is still in the past, increase to the next round 5 minutes
+        # TODO: Round to nearest 5 minutes
+        if next_run < datetime.utcnow():
+            next_run = datetime.utcnow() + timedelta(minutes=5)
+            next_run = next_run.replace(second=0, microsecond=0)
         # Update task
         collection.update_one({'_id': ObjectId(id)}, {'$set': {'schedule.next_run': next_run}})
         # Return success message
