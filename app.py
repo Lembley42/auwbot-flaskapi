@@ -26,6 +26,7 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'google-credentials.json'
 client = pymongo.MongoClient(f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_PATH}/?retryWrites=true&w=majority")
 # Get databases
 task_db = client['tasks']
+task_collection = task_db['all']
 googleads_db = client['googleads']
 facebook_db = client['facebook']
 linkedin_db = client['linkedin']
@@ -35,15 +36,16 @@ cloud_publisher = pubsub_v1.PublisherClient()
 
 # Register blueprint
 blueprints = [
-    Blueprint('create_tasks', __name__, '/tasks/<customer_name>'),
-    Blueprint('readupdatedelete_tasks', __name__, '/tasks/<id>/<customer_name>'), # Read, Update, Delete share same URL
+    Blueprint('create_tasks', __name__, '/tasks'),
+    Blueprint('readupdatedelete_tasks', __name__, '/tasks/<id>'), # Read, Update, Delete share same URL
     Blueprint('readall_tasks', __name__, '/tasks/scheduled/<type>'),
-    Blueprint('query_tasks', __name__, '/tasks/query/<customer_name>'),
-    Blueprint('log_tasks', __name__, '/tasks/log/<id>/<customer_name>'),
-    Blueprint('get_date_range', __name__, '/tasks/daterange/<id>/<customer_name>'),
-    Blueprint('reschedule_tasks', __name__, '/tasks/reschedule/<id>/<customer_name>'),
-    Blueprint('block_tasks', __name__, '/tasks/block/<id>/<customer_name>'),
-    Blueprint('unblock_tasks', __name__, '/tasks/unblock/<id>/<customer_name>'),
+    Blueprint('query_tasks', __name__, '/tasks/query'),
+    Blueprint('log_tasks', __name__, '/tasks/log/<id>'),
+    Blueprint('get_date_range', __name__, '/tasks/daterange/<id>'),
+    Blueprint('reschedule_tasks', __name__, '/tasks/reschedule/<id>'),
+    Blueprint('block_tasks', __name__, '/tasks/block/<id>'),
+    Blueprint('unblock_tasks', __name__, '/tasks/unblock/<id>'),
+    
     Blueprint('create_googleads', __name__, '/googleads/<customer_name>'),
     Blueprint('create_facebook', __name__, '/facebook/<customer_name>'),
     Blueprint('create_linkedin', __name__, '/linkedin/<customer_name>'),
@@ -63,26 +65,22 @@ def check_api_key():
 
 ### TASKS ###
 # Create
-@app.route('/tasks/<customer_name>', methods=['POST'])
-def create_task(customer_name):
+@app.route('/tasks', methods=['POST'])
+def create_task():
     if request.method == 'POST':
         # Get data from JSON response
         data = request.get_json()
-        # Get customer database
-        collection = task_db[customer_name]
         # Insert data into database
-        collection.insert_one(data)
+        task_collection.insert_one(data)
         # Return success message
         return jsonify({'status': 'success'})
 
 # Read
-@app.route('/tasks/<id>/<customer_name>', methods=['GET'])
-def get_task(id, customer_name):
+@app.route('/tasks/<id>', methods=['GET'])
+def get_task(id):
     if request.method == 'GET':
-        # Get customer database
-        collection = task_db[customer_name]
         # Get task from document by ObjectId
-        task = collection.find_one({'_id': ObjectId(id)})
+        task = task_collection.find_one({'_id': ObjectId(id)})
         # Convert with custom JSONEncoder to JSON
         json_data = json.dumps(task, cls=JSONEncoder)
         # Return task
@@ -92,53 +90,43 @@ def get_task(id, customer_name):
 @app.route('/tasks/scheduled/<type>', methods=['GET'])
 def get_tasks_of_type(type):
     if request.method == 'GET':
-        # Get every collection in database
-        collections = task_db.list_collection_names()
         # Find every document where status is idle and where type is equal to type
         now = datetime.utcnow()
-        tasks = []
-        for collection in collections:
-            tasks += list(task_db[collection].find({'status': 'idle', 'schedule.next_run': {'$gte': now}, 'type': type}))        
+        tasks = list(task_collection.find({'status': 'idle', 'schedule.next_run': {'$gte': now}, 'type': type}))        
         # Convert with custom JSONEncoder to JSON
         json_data = json.dumps(tasks, cls=JSONEncoder)
         # Return tasks
         return json_data
 
 # Update
-@app.route('/tasks/<id>/<customer_name>', methods=['PUT'])
-def update_task(id, customer_name):
+@app.route('/tasks/<id>', methods=['PUT'])
+def update_task(id):
     if request.method == 'PUT':
         # Get data from JSON response
         data = request.get_json()
-        # Get customer database
-        collection = task_db[customer_name]
         # Update task
-        collection.update_one({'_id': ObjectId(id)}, {'$set': data})
+        task_collection.update_one({'_id': ObjectId(id)}, {'$set': data})
         # Return success message
         return jsonify({'status': 'success'})
         
 # Delete
-@app.route('/tasks/<id>/<customer_name>', methods=['DELETE'])
-def delete_task(id, customer_name):
+@app.route('/tasks/<id>', methods=['DELETE'])
+def delete_task(id):
     if request.method == 'DELETE':
-        # Get customer database
-        collection = task_db[customer_name]
         # Delete task
-        result = collection.delete_one({'_id': ObjectId(id)})
+        result = task_collection.delete_one({'_id': ObjectId(id)})
         # Return success message
         return jsonify({'status': 'success'})
 
 
 # Query
-@app.route('/tasks/query/<customer_name>', methods=['POST'])
-def query_tasks(customer_name):
+@app.route('/tasks/query', methods=['POST'])
+def query_tasks():
     if request.method == 'POST':
         # Get data from JSON response
         data = request.get_json()
-        # Get customer database
-        collection = task_db[customer_name]
         # Query tasks
-        tasks = list(collection.find(data))
+        tasks = list(task_collection.find(data))
         # Convert with custom JSONEncoder to JSON
         json_data = json.dumps(tasks, cls=JSONEncoder)
         # Return tasks
@@ -146,27 +134,23 @@ def query_tasks(customer_name):
 
 ### Task Functions ###
 # Log
-@app.route('/tasks/log/<id>/<customer_name>', methods=['PUT'])
-def log_task(id, customer_name):
+@app.route('/tasks/log/<id>', methods=['PUT'])
+def log_task(id):
     if request.method == 'PUT':
         # Get data from JSON response
         data = request.get_json()
-        # Get customer database
-        collection = task_db[customer_name]
         # Add object to log array in task
-        collection.update_one({'_id': ObjectId(id)}, {'$push': {'log': data}})
+        task_collection.update_one({'_id': ObjectId(id)}, {'$push': {'log': data}})
         # Return success message
         return jsonify({'status': 'success'}) 
 
 
 # Get Date Range
-@app.route('/tasks/daterange/<id>/<customer_name>', methods=['GET'])
-def get_date_range(id, customer_name):
+@app.route('/tasks/daterange/<id>', methods=['GET'])
+def get_date_range(id):
     if request.method == 'GET':
-        # Get customer database
-        collection = task_db[customer_name]
         # Get task from document by ObjectId
-        task = collection.find_one({'_id': ObjectId(id)})
+        task = task_collection.find_one({'_id': ObjectId(id)})
         # Determine date range
         mode = task['mode']
         task_settings = task['settings']
@@ -179,11 +163,11 @@ def get_date_range(id, customer_name):
         # If last date is within update range, ensure mode is update
         if mode == 'load' and (last_date + timedelta(days=daysToUpdate)) >= today:
             mode = 'update'
-            collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
+            task_collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
         # If last date is not within update range, ensure mode is load
         elif mode == 'update' and (last_date + timedelta(days=daysToUpdate)) < today: 
             mode = 'load'
-            collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
+            task_collection.update_one({'_id': ObjectId(id)}, {'$set': {'mode': mode}})
 
         # When Update, start date is today and end date is today - daysToUpdate, but no earlier than first_date
         if mode == 'update':
@@ -206,13 +190,11 @@ def get_date_range(id, customer_name):
 
 
 # Reschedule
-@app.route('/tasks/reschedule/<id>/<customer_name>', methods=['PUT'])
-def reschedule_task(id, customer_name):
+@app.route('/tasks/reschedule/<id>', methods=['PUT'])
+def reschedule_task(id):
     if request.method == 'PUT':
-        # Get customer database
-        collection = task_db[customer_name]
         # Load task from database
-        task = collection.find_one({'_id': ObjectId(id)})
+        task = task_collection.find_one({'_id': ObjectId(id)})
         # Get variables from task document
         mode = task['mode']
         next_run = task['schedule']['next_run']
@@ -229,30 +211,26 @@ def reschedule_task(id, customer_name):
             next_run = datetime.utcnow() + timedelta(minutes=5)
             next_run = next_run.replace(second=0, microsecond=0)
         # Update task
-        collection.update_one({'_id': ObjectId(id)}, {'$set': {'schedule.next_run': next_run}})
+        task_collection.update_one({'_id': ObjectId(id)}, {'$set': {'schedule.next_run': next_run}})
         # Return success message
         return jsonify({'status': 'success'})
 
 
 # Block
-@app.route('/tasks/block/<id>/<customer_name>', methods=['PUT'])
-def block_task(id, customer_name):
+@app.route('/tasks/block/<id>', methods=['PUT'])
+def block_task(id):
     if request.method == 'PUT':
-        # Get customer database
-        collection = task_db[customer_name]
         # Add object to block array in task
-        collection.update_one({'_id': ObjectId(id)}, {'$set': {'status': 'running'}})
+        task_collection.update_one({'_id': ObjectId(id)}, {'$set': {'status': 'running'}})
         # Return success message
         return jsonify({'status': 'success'})
 
 # Unblock
-@app.route('/tasks/unblock/<id>/<customer_name>', methods=['PUT'])
-def unblock_task(id, customer_name):
+@app.route('/tasks/unblock/<id>', methods=['PUT'])
+def unblock_task(id):
     if request.method == 'PUT':
-        # Get customer database
-        collection = task_db[customer_name]
         # Add object to block array in task
-        collection.update_one({'_id': ObjectId(id)}, {'$set': {'status': 'idle'}})
+        task_collection.update_one({'_id': ObjectId(id)}, {'$set': {'status': 'idle'}})
         # Return success message
         return jsonify({'status': 'success'})
 
