@@ -92,7 +92,7 @@ def get_tasks_of_type(type):
     if request.method == 'GET':
         # Find every document where status is idle and where type is equal to type
         now = datetime.utcnow()
-        tasks = list(task_collection.find({'status': 'idle', 'schedule.next_run': {'$gte': now}, 'type': type}))        
+        tasks = list(task_collection.find({'status': 'idle', 'schedule.next_run': {'$lte': now}, 'type': type}))        
         # Convert with custom JSONEncoder to JSON
         json_data = json.dumps(tasks, cls=JSONEncoder)
         # Return tasks
